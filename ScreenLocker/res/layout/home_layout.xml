@@ -1,0 +1,30 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+xmlns:tools="http://schemas.android.com/tools"
+android:layout_width="match_parent"
+android:layout_height="match_parent"
+tools:context="com.example.acts.Home"
+android:background="@drawable/wallpaper" >
+<RelativeLayout
+android:id="@+id/rela"
+android:layout_width="match_parent"
+android:layout_height="match_parent" />
+<ImageView
+android:id="@+id/view"
+android:layout_width="match_parent"
+android:layout_height="match_parent" />
+
+<AnalogClock  
+	android:id="@+id/analogClock1"  
+   	android:layout_width="wrap_content"  
+   	android:layout_height="wrap_content" /> 
+
+<Button
+		android:id="@+id/Click_Button" 
+		
+		android:layout_marginLeft="8dp"
+		android:layout_marginTop="500dp"
+		android:layout_width="wrap_content" 
+		android:layout_height="wrap_content" 
+		android:text="@string/Click"
+/>
+</RelativeLayout>

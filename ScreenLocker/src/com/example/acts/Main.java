@@ -1,0 +1,406 @@
+package com.example.acts;
+
+
+//import com.example.acts.Home.Dot;
+import com.example.screenlocker.R;
+
+import android.content.Intent;
+import android.os.Bundle;
+import android.support.v7.app.ActionBarActivity;
+import android.util.Log;
+
+import android.os.Handler;
+import android.widget.RelativeLayout;
+import android.widget.ImageView;
+import android.widget.TextView;
+import android.graphics.Path;
+import android.graphics.Canvas;
+import android.graphics.Paint;
+import android.graphics.Paint.Style;
+import android.graphics.Bitmap;
+import android.graphics.Bitmap.Config;
+import android.graphics.PorterDuff.Mode;
+import android.graphics.PorterDuffXfermode;
+import android.content.Context;
+import android.view.ViewGroup.LayoutParams;
+import android.view.Window;
+import android.util.DisplayMetrics;
+
+import jp.epson.moverio.bt200.SensorControl;
+
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
+import java.text.DecimalFormat;
+
+import android.app.AlertDialog; 
+import android.app.Dialog; 
+import android.content.DialogInterface;
+
+
+public class Main extends ActionBarActivity implements SensorEventListener  
+{
+	
+	//About the dots
+	private RelativeLayout relativeLayout;// For the dots
+	private ImageView view;//For drawing the path
+	private Path path;
+	private Paint paint;
+	private Canvas canvas;
+	private Dot[] arrayset = new Dot[9];// vector for 9 dots
+	public static boolean[]arraypw=new boolean[9]; //password
+	private Dot lastDot;// the last dot
+	private Bitmap bitmap;
+	private boolean drawing = false;// judge if the dot has been passed.
+	private int radius = 0;// the radius of the dot
+	
+	private TextView azimuthText, pithText, rollText;
+	//private TextView setPWText;
+	private DecimalFormat d = new DecimalFormat("#.##");
+	
+	
+	private SensorManager mySensorManager=null;
+	private Sensor mySensor=null;
+	private SensorControl mySensorcontrol=null;
+	
+	private int flagback=0;
+	//private int flagi=0,flagj=0;
+	private int di=1,dj=1;
+	private Dot dot1;
+	private boolean flagfinish=true;
+	
+	@Override
+	protected void onCreate(Bundle savedInstanceState) {
+		super.onCreate(savedInstanceState);	
+		
+		setContentView(R.layout.main_layout);       //Show main_layout	
+		relativeLayout = (RelativeLayout) findViewById(R.id.rela);//Show the block for dots
+		view = (ImageView) findViewById(R.id.view); 
+
+		azimuthText = (TextView) findViewById(R.id.azmuth);
+		pithText = (TextView) findViewById(R.id.pitch);
+		rollText = (TextView) findViewById(R.id.roll);
+		
+		mySensorcontrol = new SensorControl(this);
+	    mySensorcontrol.setMode(SensorControl.SENSOR_MODE_HEADSET);
+		mySensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
+		drawDots();		
+		startService(new Intent(Main.this, myService.class));
+	}
+
+	 protected void onResume() {
+	        super.onResume();
+	    		mySensor = mySensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
+	            mySensorManager.registerListener(this,mySensor,SensorManager.SENSOR_DELAY_NORMAL);
+	        }
+	  protected void onPause() {
+	            mySensorManager.unregisterListener(this);
+	            super.onPause();
+	        }
+	  @Override
+		public void onStop() {
+			super.onStop();
+			mySensorManager.unregisterListener(this);
+		}
+	  
+	  @Override
+	  public void onAccuracyChanged(Sensor sensor, int i){
+	  }
+	  
+	@Override
+	public void onSensorChanged(SensorEvent event){
+     
+		float azi=event.values[0];
+		float pit=event.values[1];
+		float rol=event.values[2];
+		d.setMaximumFractionDigits(1);
+		d.setMinimumFractionDigits(1);
+		azimuthText.setText(""+d.format(azi));
+		pithText.setText(""+d.format(pit));
+		rollText.setText(""+d.format(rol));
+
+		switch(flagback)
+		{
+			case 0:
+				dot1=arrayset[di+dj*3];
+				drawfirstdot(dot1);
+				checkinput(pit,azi);
+				Log.e("di:"+di," Flagback:"+flagback);
+				break;
+			case 1:
+				checkinput(pit,azi);
+				break;
+			case 2:
+				dot1=arrayset[di+dj*3];
+				drawnextdot(dot1);
+				checkinput(pit,azi);
+				break;
+			case 3:
+				checkinput(pit,azi);
+				break;
+			case 4:
+				dot1=arrayset[di+dj*3];
+				drawnextdot(dot1);
+				checkinput(pit,azi);
+				break;
+			case 5:
+				checkinput(pit,azi);
+				break;
+			case 6:
+				dot1=arrayset[di+dj*3];
+				drawnextdot(dot1);
+				checkinput(pit,azi);
+				break;
+			default:
+				if(flagfinish)drawlastdot();
+				break;
+		}
+		}	
+	/*	
+	private void checkinput(float pit,float azi)
+	{
+		if(flagi<4&&pit>0.6){
+			flagi++;
+			}
+		if(flagi==4){
+			if(flagback%2==0&&di>0)di--;
+			flagback++;
+			flagi=0;
+			}
+		
+		if(flagi<4&&pit<-0.6){
+			flagi++;
+			}
+		if(flagi==4){
+			if(flagback%2==0&&di<=1)di++;
+			flagback++;
+			flagi=0;
+			}
+		
+		if(flagj<4&&azi>0.4){
+			flagj++;
+			}
+		if(flagj==4){
+			if(flagback%2==0&&dj>0)dj--;
+			flagback++;
+			flagj=0;
+			}
+		
+		if(flagj<4&&azi<-0.4){
+			flagj++;
+			}
+		if(flagj==4){
+			if(flagback%2==0&&dj<=1)dj++;
+			flagback++;
+			flagj=0;
+			}
+		
+	}
+	*/
+	private void checkinput(float pit,float azi)
+	{
+		if(pit>1.2){
+			if(flagback%2==0&&di>0)di--;
+			flagback++;
+			}
+		if(pit<-1.2){
+			if(flagback%2==0&&di<=1)di++;
+			flagback++;
+			}
+		if(azi>0.7){
+			if(flagback%2==0&&dj>0)dj--;
+			flagback++;
+			}
+		if(azi<-0.7){
+			if(flagback%2==0&&dj<=1)dj++;
+			flagback++;
+			}
+	}
+	
+	public void drawlastdot()
+	{
+		flagfinish=false;
+		if (drawing) {
+			clear();
+			canvas.drawPath(path, paint);
+			view.invalidate();
+			drawing = false;
+			new Handler().postDelayed(new Runnable() {
+				@Override
+				public void run() {
+					dj=1;
+					di=1;
+				}
+			}, 1000);
+		}
+		Dialog alertDialog = new AlertDialog.Builder(this). 
+                setTitle("Set Password？"). 
+                setMessage("Finish setting the password？"). 
+                setIcon(R.drawable.ic_launcher). 
+                setPositiveButton("Yes", new DialogInterface.OnClickListener() { 
+                    @Override 
+                    public void onClick(DialogInterface dialog, int which) { 
+    				clearAllDrawing();
+                    finish();
+                    } 
+                }). 
+                setNegativeButton("Cancel", new DialogInterface.OnClickListener() { 
+                     
+                    @Override 
+                    public void onClick(DialogInterface dialog, int which) { 
+    				flagback=0; 
+    				clearAllDrawing();
+    				flagfinish=true;
+                    } 
+                }).  
+                create(); 
+				alertDialog.show(); 
+	}
+	public void drawnextdot(Dot dot)
+	{
+		if (drawing) {
+						clear();
+						lastDot = dot;
+						lastDot.drawPassed();
+						RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams) dot.getLayoutParams(); 
+						path.lineTo(params.leftMargin + radius, params.topMargin+ radius);
+						canvas.drawPath(path, paint);
+						}
+	}
+	
+	public void drawfirstdot(Dot dot)
+	{
+		bitmap = Bitmap.createBitmap(getWindowWidth(), getWindowHeight(), Config.ARGB_8888);
+		canvas = new Canvas(bitmap);
+		paint = new Paint();
+		path = new Path();
+		
+		paint.setARGB(255, 0, 0, 255);
+		paint.setStrokeWidth(8);
+		paint.setStyle(Style.STROKE);
+		
+		// get the axis for center of a circle
+		RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams) dot.getLayoutParams();
+		lastDot = dot;
+		lastDot.drawPassed();                              
+	
+		path.moveTo(params.leftMargin+radius,params.topMargin+radius);
+		// set the beginning of path
+		view.setImageBitmap(bitmap);
+		drawing = true;
+	}
+	
+	protected void drawDots() {
+		int TopMars = (getScreenWidth() - getScreenHeight()) / 2;
+		radius = getScreenHeight() / 12;
+		for (int i = 0; i < 3; i++) {
+			for (int j = 0; j < 3; j++) {
+				RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(radius * 2, radius * 2);
+				params.leftMargin = (int) (2*TopMars +radius * 4 * (j + 0.25));
+				params.topMargin = (int) ( radius * 4 * (i + 0.25));
+				Dot dot = new Dot(this, radius);
+				arrayset[i * 3 + j] = dot;
+				relativeLayout.addView(dot, params);
+			}
+		}
+	}
+	
+
+	public int getScreenWidth() {
+		DisplayMetrics metrics = new DisplayMetrics();
+		getWindowManager().getDefaultDisplay().getMetrics(metrics);	
+		return metrics.widthPixels;
+		}
+
+	public int getScreenHeight() {
+		DisplayMetrics metrics = new DisplayMetrics();
+		getWindowManager().getDefaultDisplay().getMetrics(metrics);
+		return metrics.heightPixels;
+		}
+	
+
+	public int getWindowWidth() {
+	return getWindow().findViewById(Window.ID_ANDROID_CONTENT).getWidth();
+	}
+
+	public int getWindowHeight() {
+	return getWindow().findViewById(Window.ID_ANDROID_CONTENT).getHeight();
+	}
+
+	protected void clearAllDrawing() {
+		clear();
+		for (int i = 0; i < arrayset.length; i++) {
+			Dot dot = arrayset[i];
+			if (dot != null) {
+				
+				arraypw[i]=dot.getPassed(); //save passwrod
+				
+				dot.drawNormal();
+				}
+			}
+			drawing = false;
+	}
+	
+
+	protected void clear() {
+		if (canvas != null && paint != null) {
+			paint.setXfermode(new PorterDuffXfermode(Mode.CLEAR));
+			canvas.drawPaint(paint);
+			paint.setXfermode(new PorterDuffXfermode(Mode.SRC));
+			view.invalidate();
+			}
+	}
+	protected class Dot extends ImageView {
+		private int dotradius = 0;
+		private boolean passed = false;
+		public Dot(Context context) {
+			super(context);
+			}
+		public Dot(Context context, int rad) {
+			super(context);
+			dotradius = rad;
+			setLayoutParams(new LayoutParams(dotradius * 2, dotradius * 2));
+			drawNormal();
+			}
+
+		public void drawNormal() {
+			passed = false;
+			Bitmap bm = Bitmap.createBitmap(dotradius * 2, dotradius * 2, Config.ARGB_8888);
+			Paint paint = new Paint();
+			Canvas canvas = new Canvas(bm);
+			paint.setAntiAlias(true);
+			paint.setARGB(255, 100, 100, 100); //dot normal
+			paint.setStyle(Style.STROKE);
+			paint.setStrokeWidth(5);
+			canvas.drawCircle(dotradius, dotradius, dotradius - paint.getStrokeWidth(), paint);
+			paint.setStrokeWidth(1);
+			paint.setStyle(Style.FILL_AND_STROKE);
+			canvas.drawCircle(dotradius, dotradius, 3, paint);
+			setImageBitmap(bm);
+			}
+
+		public void drawPassed() {
+			passed = true;
+			Bitmap bm = Bitmap.createBitmap(dotradius * 2, dotradius * 2, Config.ARGB_8888);
+			Paint paint = new Paint();
+			Canvas canvas = new Canvas(bm);
+			paint.setAntiAlias(true);
+			paint.setARGB(255, 156, 156, 156);  //dot passed
+			paint.setStyle(Style.STROKE);
+			paint.setStrokeWidth(5);
+			canvas.drawCircle(dotradius, dotradius, dotradius - paint.getStrokeWidth(), paint);
+			paint.setStyle(Style.FILL_AND_STROKE);
+			canvas.drawCircle(dotradius, dotradius, dotradius / 3, paint);
+			setImageBitmap(bm);
+			}
+		public boolean getPassed() {
+			return passed;
+			}
+		public void setPassed(boolean temp)
+		{
+			this.passed=temp;
+		}
+		}
+}
+
